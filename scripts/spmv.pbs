@@ -1,0 +1,42 @@
+#!/bin/bash
+# SpMV Calculation Deliverable 1
+#PBS -N spmv_bench
+# Output files
+#PBS -o ../results/spmv_job.out
+#PBS -e ../results/spmv_job.err
+# Queue name
+#PBS -q short_cpuQ
+# Set the maximum wall time
+#PBS -l walltime=0:10:00
+# Number of nodes, cpus, mpi processors and amount of memory
+#PBS -l select=1:ncpus=16:mem=16gb
+
+# Modules for C
+module load gcc91
+gcc --version
+# Select the working directory
+cd "$PBS_O_WORKDIR"   # go to the directory where qsub was run
+
+SRC_DIR="../src"
+OUT_DIR="../results"
+mkdir -p "$OUT_DIR"
+
+echo "Running in: $(pwd)"
+
+# The code should be compiled before submitting the job
+gcc -std=c99 -O3 -fopenmp "$SRC_DIR/main.c" "$SRC_DIR/utility.c" "$SRC_DIR/mmio.c" -o "$OUT_DIR/spmv_exec"
+
+MATRICES=("matrix1.mtx" "matrix2.mtx" "matrix3.mtx" "matrix4.mtx" "matrix5.mtx")
+THREADS=(1 2 4 8 16)
+
+LOGFILE="$OUT_DIR/logs.txt"
+> "$LOGFILE"   # reset logfile
+
+for m in "${MATRICES[@]}"; do
+  for t in "${THREADS[@]}"; do
+    export OMP_NUM_THREADS=$t
+    echo "MATRIX=$m THREADS=$t" >> "$LOGFILE"
+    "$OUT_DIR/spmv_exec" "../data/$m"        >> "$LOGFILE"
+  done
+done
+
